@@ -76,7 +76,6 @@ local function TeleportAndRevive()
     isRunning = true
     local target = FindDownedPlayer()
     if target then
-        -- Lấy tên người chơi
         local playerName = "người chơi"
         for _, player in ipairs(Players:GetPlayers()) do
             if player.Character == target then
@@ -85,7 +84,6 @@ local function TeleportAndRevive()
             end
         end
         TeleportToTarget(target)
-        -- CHỈ 1 THÔNG BÁO DUY NHẤT
         Notify("✅ Đã teleport", "đến " .. playerName, 2)
     else
         Notify("❌", "Không có ai gục!", 1.5)
@@ -184,12 +182,14 @@ local function UpdateESP()
     end
 end
 
--- ====== GUI BẢNG CHỌN NGƯỜI CHƠI (CÓ XỬ LÝ SHIFTLOCK) ======
+-- ====== GUI BẢNG CHỌN NGƯỜI CHƠI (ĐÃ SỬA LỖI CHUỘT) ======
 local function CreatePlayerListGUI()
-    local cam = workspace.CurrentCamera
-    if cam then
-        cam.CameraType = Enum.CameraType.Scriptable
-    end
+    -- THẢ CHUỘT TRƯỚC KHI MỞ GUI (giống nhấn M)
+    pcall(function()
+        local VirtualUser = game:GetService("VirtualUser")
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new(0, 0))
+    end)
     
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "TeleportGUI"
@@ -241,10 +241,6 @@ local function CreatePlayerListGUI()
     closeBtn.MouseButton1Click:Connect(function()
         screenGui:Destroy()
         guiOpened = false
-        local cam2 = workspace.CurrentCamera
-        if cam2 then
-            cam2.CameraType = Enum.CameraType.Custom
-        end
     end)
     
     local scrollFrame = Instance.new("ScrollingFrame")
@@ -295,10 +291,6 @@ local function CreatePlayerListGUI()
                     TeleportToPlayer(player)
                     screenGui:Destroy()
                     guiOpened = false
-                    local cam3 = workspace.CurrentCamera
-                    if cam3 then
-                        cam3.CameraType = Enum.CameraType.Custom
-                    end
                 end)
             end
         end
@@ -310,6 +302,17 @@ local function CreatePlayerListGUI()
     
     guiOpened = true
     return screenGui
+end
+
+-- ====== MỞ/ĐÓNG GUI BẰNG PHÍM X ======
+local function ToggleGUI()
+    if guiOpened then
+        local gui = game:GetService("CoreGui"):FindFirstChild("TeleportGUI")
+        if gui then gui:Destroy() end
+        guiOpened = false
+    else
+        CreatePlayerListGUI()
+    end
 end
 
 -- ====== PHÍM BẤM ======
@@ -325,19 +328,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
     
     if input.KeyCode == Enum.KeyCode.X then
-        if guiOpened then
-            local gui = game:GetService("CoreGui"):FindFirstChild("TeleportGUI")
-            if gui then 
-                gui:Destroy() 
-            end
-            guiOpened = false
-            local cam = workspace.CurrentCamera
-            if cam then
-                cam.CameraType = Enum.CameraType.Custom
-            end
-        else
-            CreatePlayerListGUI()
-        end
+        ToggleGUI()
     end
 end)
 
