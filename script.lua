@@ -63,16 +63,12 @@ local function TeleportToTarget(targetChar)
     local tween = TweenService:Create(RootPart, tweenInfo, {Position = targetPos})
     tween:Play()
     tween.Completed:Wait()
-    Notify("✅ Thành công", "Đã teleport đến mục tiêu!", 2)
     return true
 end
 
--- ====== TELEPORT ĐẾN NGƯỜI GỤC ======
+-- ====== TELEPORT ĐẾN NGƯỜI GỤC (ĐÃ SỬA THÔNG BÁO) ======
 local function TeleportAndRevive()
-    if isRunning then 
-        Notify("⏳ Đợi chút", "Đang xử lý...", 1.5)
-        return 
-    end
+    if isRunning then return end
     if not Character or not RootPart then
         Notify("❌ Lỗi", "Chưa có nhân vật!", 2)
         return
@@ -80,11 +76,19 @@ local function TeleportAndRevive()
     isRunning = true
     local target = FindDownedPlayer()
     if target then
-        Notify("🔍 Tìm thấy!", "Đang teleport đến người gục...", 2)
+        -- Lấy tên người chơi
+        local playerName = "người chơi"
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player.Character == target then
+                playerName = player.Name
+                break
+            end
+        end
         TeleportToTarget(target)
-        Notify("💡 Hướng dẫn", "Nhấn E để cứu!", 2)
+        -- CHỈ 1 THÔNG BÁO DUY NHẤT
+        Notify("✅ Đã teleport", "đến " .. playerName, 2)
     else
-        Notify("❌ Không tìm thấy", "Không có ai gục trong bán kính 250", 2.5)
+        Notify("❌", "Không có ai gục!", 1.5)
     end
     isRunning = false
 end
@@ -106,7 +110,7 @@ local function TeleportToPlayer(player)
     local tween = TweenService:Create(RootPart, tweenInfo, {Position = targetPos})
     tween:Play()
     tween.Completed:Wait()
-    Notify("✅ Thành công", "Đã teleport đến " .. player.Name, 2)
+    Notify("✅ Đã teleport", "đến " .. player.Name, 2)
 end
 
 -- ====== CLICK TELEPORT ======
@@ -133,7 +137,6 @@ end
 
 -- ====== ESP CẢI TIẾN ======
 local function UpdateESP()
-    -- Xóa ESP cũ
     for _, obj in ipairs(espObjects) do
         pcall(function() obj:Destroy() end)
     end
@@ -148,24 +151,21 @@ local function UpdateESP()
             local humanoid = char:FindFirstChild("Humanoid")
             if not root or not humanoid then continue end
             
-            -- Xác định màu: sống = xanh lá, gục = đỏ
-            local color = Color3.fromRGB(0, 255, 0) -- Xanh lá mặc định
+            local color = Color3.fromRGB(0, 255, 0)
             local statusText = "🟢 " .. player.Name
             if humanoid.Health <= 0 then
-                color = Color3.fromRGB(255, 0, 0) -- Đỏ
+                color = Color3.fromRGB(255, 0, 0)
                 statusText = "🔴 " .. player.Name .. " (GỤC)"
             end
             
-            -- Tạo BillboardGui (tên bám sát người chơi)
             local billboard = Instance.new("BillboardGui")
             billboard.Name = "ESP_NameTag"
             billboard.Size = UDim2.new(0, 250, 0, 50)
             billboard.Adornee = root
             billboard.AlwaysOnTop = true
             billboard.Parent = root
-            billboard.MaxDistance = 200 -- Khoảng cách nhìn thấy
+            billboard.MaxDistance = 200
             
-            -- Tạo TextLabel
             local label = Instance.new("TextLabel")
             label.Name = "Label"
             label.Parent = billboard
@@ -184,15 +184,18 @@ local function UpdateESP()
     end
 end
 
--- ====== GUI BẢNG CHỌN NGƯỜI CHƠI ======
+-- ====== GUI BẢNG CHỌN NGƯỜI CHƠI (CÓ XỬ LÝ SHIFTLOCK) ======
 local function CreatePlayerListGUI()
-    -- Tạo ScreenGui
+    local cam = workspace.CurrentCamera
+    if cam then
+        cam.CameraType = Enum.CameraType.Scriptable
+    end
+    
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "TeleportGUI"
     screenGui.Parent = game:GetService("CoreGui")
     screenGui.Enabled = true
     
-    -- Main Frame
     local frame = Instance.new("Frame")
     frame.Name = "MainFrame"
     frame.Parent = screenGui
@@ -203,18 +206,15 @@ local function CreatePlayerListGUI()
     frame.Active = true
     frame.Draggable = true
     
-    -- Bo góc
     local corner = Instance.new("UICorner")
     corner.Parent = frame
     corner.CornerRadius = UDim.new(0, 10)
     
-    -- Stroke
     local stroke = Instance.new("UIStroke")
     stroke.Parent = frame
     stroke.Color = Color3.fromRGB(100, 100, 255)
     stroke.Thickness = 2
     
-    -- Title
     local title = Instance.new("TextLabel")
     title.Parent = frame
     title.Size = UDim2.new(1, 0, 0, 40)
@@ -225,7 +225,6 @@ local function CreatePlayerListGUI()
     title.Font = Enum.Font.GothamBold
     title.TextScaled = true
     
-    -- Close Button
     local closeBtn = Instance.new("TextButton")
     closeBtn.Parent = frame
     closeBtn.Size = UDim2.new(0, 40, 0, 40)
@@ -242,9 +241,12 @@ local function CreatePlayerListGUI()
     closeBtn.MouseButton1Click:Connect(function()
         screenGui:Destroy()
         guiOpened = false
+        local cam2 = workspace.CurrentCamera
+        if cam2 then
+            cam2.CameraType = Enum.CameraType.Custom
+        end
     end)
     
-    -- ScrollingFrame
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Parent = frame
     scrollFrame.Size = UDim2.new(1, 0, 1, -40)
@@ -259,16 +261,13 @@ local function CreatePlayerListGUI()
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
     listLayout.Padding = UDim.new(0, 5)
     
-    -- Tạo nút cho từng người chơi
     local function UpdatePlayerList()
-        -- Xóa các nút cũ
         for _, child in ipairs(scrollFrame:GetChildren()) do
             if child:IsA("TextButton") then
                 child:Destroy()
             end
         end
         
-        -- Tạo nút mới
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= LP then
                 local btn = Instance.new("TextButton")
@@ -281,12 +280,10 @@ local function CreatePlayerListGUI()
                 btn.TextScaled = true
                 btn.Text = "📌 " .. player.Name
                 
-                -- Bo góc
                 local btnCorner = Instance.new("UICorner")
                 btnCorner.Parent = btn
                 btnCorner.CornerRadius = UDim.new(0, 5)
                 
-                -- Hover effect
                 btn.MouseEnter:Connect(function()
                     btn.BackgroundColor3 = Color3.fromRGB(80, 80, 120)
                 end)
@@ -294,20 +291,20 @@ local function CreatePlayerListGUI()
                     btn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
                 end)
                 
-                -- Click để teleport
                 btn.MouseButton1Click:Connect(function()
                     TeleportToPlayer(player)
                     screenGui:Destroy()
                     guiOpened = false
+                    local cam3 = workspace.CurrentCamera
+                    if cam3 then
+                        cam3.CameraType = Enum.CameraType.Custom
+                    end
                 end)
             end
         end
     end
     
-    -- Cập nhật danh sách ban đầu
     UpdatePlayerList()
-    
-    -- Cập nhật khi có người vào/ra
     Players.PlayerAdded:Connect(UpdatePlayerList)
     Players.PlayerRemoving:Connect(UpdatePlayerList)
     
@@ -319,23 +316,25 @@ end
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
-    -- V: Teleport đến người gục
     if input.KeyCode == Enum.KeyCode.V then
         TeleportAndRevive()
     end
     
-    -- Z: Click Teleport
     if input.KeyCode == Enum.KeyCode.Z then
         ToggleClickTeleport()
     end
     
-    -- X: Mở bảng chọn người chơi
     if input.KeyCode == Enum.KeyCode.X then
         if guiOpened then
-            -- Nếu đã mở thì đóng
             local gui = game:GetService("CoreGui"):FindFirstChild("TeleportGUI")
-            if gui then gui:Destroy() end
+            if gui then 
+                gui:Destroy() 
+            end
             guiOpened = false
+            local cam = workspace.CurrentCamera
+            if cam then
+                cam.CameraType = Enum.CameraType.Custom
+            end
         else
             CreatePlayerListGUI()
         end
@@ -398,6 +397,5 @@ print("📌 [Z] Bật/Tắt Click Teleport")
 print("📌 [X] Mở bảng chọn người chơi để teleport")
 print("👁️ ESP tự động: Xanh lá = sống, Đỏ = gục")
 
--- Tạo ESP lần đầu
 wait(0.5)
 UpdateESP()
