@@ -15,7 +15,6 @@ local isRunning = false
 local noclipEnabled = false
 local espEnabled = true
 local espObjects = {}
-local selectedPlayer = nil
 local guiOpened = false
 
 -- ====== NOTIFICATION ======
@@ -66,7 +65,7 @@ local function TeleportToTarget(targetChar)
     return true
 end
 
--- ====== TELEPORT ĐẾN NGƯỜI GỤC (ĐÃ SỬA THÔNG BÁO) ======
+-- ====== TELEPORT ĐẾN NGƯỜI GỤC ======
 local function TeleportAndRevive()
     if isRunning then return end
     if not Character or not RootPart then
@@ -133,8 +132,71 @@ local function ToggleClickTeleport()
     end
 end
 
--- ====== ESP CẢI TIẾN ======
+-- ====== ESP NEON GLOW BAO PHỦ NGƯỜI CHƠI ======
+local function CreateNeonESP(player)
+    if not player.Character then return end
+    local char = player.Character
+    local humanoid = char:FindFirstChild("Humanoid")
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not root then return end
+    
+    -- Xác định màu: sống = xanh neon, gục = đỏ neon
+    local isAlive = humanoid.Health > 0
+    local mainColor = isAlive and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 50, 50)
+    local outlineColor = isAlive and Color3.fromRGB(0, 255, 200) or Color3.fromRGB(255, 100, 100)
+    local statusText = isAlive and "🟢 " .. player.Name or "🔴 " .. player.Name .. " (GỤC)"
+    
+    -- 1. HIGHLIGHT (viền sáng bao quanh toàn bộ nhân vật)
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ESP_Neon"
+    highlight.Parent = char
+    highlight.Adornee = char
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.FillColor = mainColor
+    highlight.FillTransparency = 0.6
+    highlight.OutlineColor = outlineColor
+    highlight.OutlineTransparency = 0.1
+    
+    table.insert(espObjects, highlight)
+    
+    -- 2. POINT LIGHT (hiệu ứng phát sáng neon)
+    local light = Instance.new("PointLight")
+    light.Name = "ESP_Light"
+    light.Parent = root
+    light.Color = mainColor
+    light.Brightness = 4
+    light.Range = 15
+    light.Shadows = false
+    
+    table.insert(espObjects, light)
+    
+    -- 3. TÊN ESP (bám sát nhân vật)
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESP_NameTag"
+    billboard.Size = UDim2.new(0, 300, 0, 50)
+    billboard.Adornee = root
+    billboard.AlwaysOnTop = true
+    billboard.Parent = char
+    billboard.MaxDistance = 300
+    
+    local label = Instance.new("TextLabel")
+    label.Name = "Label"
+    label.Parent = billboard
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = mainColor
+    label.TextScaled = true
+    label.Text = statusText
+    label.Font = Enum.Font.GothamBold
+    label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    label.TextStrokeTransparency = 0.2
+    
+    table.insert(espObjects, billboard)
+    table.insert(espObjects, label)
+end
+
 local function UpdateESP()
+    -- Xóa ESP cũ
     for _, obj in ipairs(espObjects) do
         pcall(function() obj:Destroy() end)
     end
@@ -143,48 +205,14 @@ local function UpdateESP()
     if not espEnabled then return end
     
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LP and player.Character then
-            local char = player.Character
-            local root = char:FindFirstChild("HumanoidRootPart")
-            local humanoid = char:FindFirstChild("Humanoid")
-            if not root or not humanoid then continue end
-            
-            local color = Color3.fromRGB(0, 255, 0)
-            local statusText = "🟢 " .. player.Name
-            if humanoid.Health <= 0 then
-                color = Color3.fromRGB(255, 0, 0)
-                statusText = "🔴 " .. player.Name .. " (GỤC)"
-            end
-            
-            local billboard = Instance.new("BillboardGui")
-            billboard.Name = "ESP_NameTag"
-            billboard.Size = UDim2.new(0, 250, 0, 50)
-            billboard.Adornee = root
-            billboard.AlwaysOnTop = true
-            billboard.Parent = root
-            billboard.MaxDistance = 200
-            
-            local label = Instance.new("TextLabel")
-            label.Name = "Label"
-            label.Parent = billboard
-            label.Size = UDim2.new(1, 0, 1, 0)
-            label.BackgroundTransparency = 1
-            label.TextColor3 = color
-            label.TextScaled = true
-            label.Text = statusText
-            label.Font = Enum.Font.GothamBold
-            label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-            label.TextStrokeTransparency = 0.3
-            
-            table.insert(espObjects, billboard)
-            table.insert(espObjects, label)
+        if player ~= LP then
+            CreateNeonESP(player)
         end
     end
 end
 
--- ====== GUI BẢNG CHỌN NGƯỜI CHƠI (ĐÃ SỬA LỖI CHUỘT) ======
+-- ====== GUI BẢNG CHỌN NGƯỜI CHƠI ======
 local function CreatePlayerListGUI()
-    -- THẢ CHUỘT TRƯỚC KHI MỞ GUI (giống nhấn M)
     pcall(function()
         local VirtualUser = game:GetService("VirtualUser")
         VirtualUser:CaptureController()
@@ -304,7 +332,7 @@ local function CreatePlayerListGUI()
     return screenGui
 end
 
--- ====== MỞ/ĐÓNG GUI BẰNG PHÍM X ======
+-- ====== MỞ/ĐÓNG GUI ======
 local function ToggleGUI()
     if guiOpened then
         local gui = game:GetService("CoreGui"):FindFirstChild("TeleportGUI")
@@ -385,8 +413,8 @@ Notify("🚀 SCRIPT ĐÃ CHẠY!", "[V] Teleport gục | [Z] Click TP | [X] Bả
 print("✅ Script đã chạy!")
 print("📌 [V] Teleport đến người gục")
 print("📌 [Z] Bật/Tắt Click Teleport")
-print("📌 [X] Mở bảng chọn người chơi để teleport")
-print("👁️ ESP tự động: Xanh lá = sống, Đỏ = gục")
+print("📌 [X] Mở bảng chọn người chơi")
+print("👁️ ESP Neon: Xanh = sống, Đỏ = gục")
 
 wait(0.5)
 UpdateESP()
