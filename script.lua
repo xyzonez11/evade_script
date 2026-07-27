@@ -49,14 +49,14 @@ end
 
 -- ====== TELEPORT ======
 local function TeleportToTarget(targetChar)
-    if not targetChar or not RootPart then 
+    if not targetChar or not RootPart then
         Notify("❌ Lỗi", "Không tìm thấy mục tiêu!", 2)
-        return false 
+        return false
     end
     local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
-    if not targetRoot then 
+    if not targetRoot then
         Notify("❌ Lỗi", "Mục tiêu không có RootPart!", 2)
-        return false 
+        return false
     end
     local targetPos = targetRoot.Position + Vector3.new(0, 1, 3)
     local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
@@ -133,7 +133,7 @@ local function ToggleClickTeleport()
     end
 end
 
--- ====== ESP BOX + TÊN + KHOẢNG CÁCH + DÂY NỐI ======
+-- ====== ESP BOX + TÊN ======
 local function UpdateESP()
     for _, obj in ipairs(espObjects) do
         pcall(function() obj:Destroy() end)
@@ -156,39 +156,30 @@ local function UpdateESP()
                 color = Color3.fromRGB(255, 50, 50)
             end
 
-            -- ── Box scale theo khoảng cách để luôn dễ thấy ──
-            local scale = 1 + (dist / 120)
+            -- ── Box xuyên tường bao quanh toàn thân ──
             local box = Instance.new("BoxHandleAdornment")
             box.Adornee = root
             box.AlwaysOnTop = true
             box.ZIndex = 5
-            box.Size = Vector3.new(2.2 * scale, 5.8 * scale, 1.2 * scale)
+            box.Size = Vector3.new(2.2, 5.8, 1.2)
             box.CFrame = CFrame.new(0, 1.5, 0)
             box.Color3 = color
             box.Transparency = 0.45
             box.Parent = workspace
 
-
-            -- ── BillboardGui: tên + khoảng cách, luôn hiện dù ở xa ──
+            -- ── Tên hiện luôn dù ở xa ──
             local billboard = Instance.new("BillboardGui")
             billboard.Name = "ESP_NameTag"
-            billboard.Size = UDim2.new(0, 160, 0, 46)
+            billboard.Size = UDim2.new(0, 160, 0, 30)
             billboard.StudsOffset = Vector3.new(0, 4, 0)
             billboard.Adornee = root
             billboard.AlwaysOnTop = true
             billboard.MaxDistance = 9999
             billboard.Parent = root
 
-            local layout = Instance.new("UIListLayout")
-            layout.Parent = billboard
-            layout.FillDirection = Enum.FillDirection.Vertical
-            layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-            layout.VerticalAlignment = Enum.VerticalAlignment.Center
-            layout.Padding = UDim.new(0, 2)
-
             local nameLabel = Instance.new("TextLabel")
             nameLabel.Parent = billboard
-            nameLabel.Size = UDim2.new(1, 0, 0, 24)
+            nameLabel.Size = UDim2.new(1, 0, 1, 0)
             nameLabel.BackgroundTransparency = 1
             nameLabel.TextColor3 = color
             nameLabel.Text = player.Name
@@ -196,7 +187,6 @@ local function UpdateESP()
             nameLabel.TextSize = 15
             nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
             nameLabel.TextStrokeTransparency = 0.15
-
 
             table.insert(espObjects, box)
             table.insert(espObjects, billboard)
@@ -407,7 +397,7 @@ print("✅ Script đã chạy!")
 print("📌 [V] Teleport đến người gục")
 print("📌 [Z] Bật/Tắt Click Teleport")
 print("📌 [X] Mở bảng chọn người chơi để teleport")
-print("👁️ ESP: Box bao quanh nhân vật — Xanh lá = sống, Đỏ = gục")
+print("👁️ ESP: Box xuyên tường + tên — Xanh lá = sống, Đỏ = gục")
 
 wait(0.5)
 UpdateESP()
