@@ -49,14 +49,14 @@ end
 
 -- ====== TELEPORT ======
 local function TeleportToTarget(targetChar)
-    if not targetChar or not RootPart then
+    if not targetChar or not RootPart then 
         Notify("❌ Lỗi", "Không tìm thấy mục tiêu!", 2)
-        return false
+        return false 
     end
     local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
-    if not targetRoot then
+    if not targetRoot then 
         Notify("❌ Lỗi", "Mục tiêu không có RootPart!", 2)
-        return false
+        return false 
     end
     local targetPos = targetRoot.Position + Vector3.new(0, 1, 3)
     local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
@@ -133,7 +133,7 @@ local function ToggleClickTeleport()
     end
 end
 
--- ====== ESP BOX + TÊN + KHOẢNG CÁCH ======
+-- ====== ESP BOX + TÊN + KHOẢNG CÁCH + DÂY NỐI ======
 local function UpdateESP()
     for _, obj in ipairs(espObjects) do
         pcall(function() obj:Destroy() end)
@@ -152,30 +152,45 @@ local function UpdateESP()
 
             local dist = math.floor((root.Position - RootPart.Position).Magnitude)
 
+            -- Màu: xanh lá = sống, đỏ = gục
             local color = Color3.fromRGB(50, 255, 50)
             if humanoid.Health <= 0 then
                 color = Color3.fromRGB(255, 50, 50)
             end
 
-            -- ── Box xuyên tường bao quanh toàn thân ──
+            -- ── Box scale theo khoảng cách để luôn dễ thấy ──
+            local scale = 1 + (dist / 120)
             local box = Instance.new("BoxHandleAdornment")
             box.Adornee = root
             box.AlwaysOnTop = true
             box.ZIndex = 5
-            box.Size = Vector3.new(2.2, 5.8, 1.2)
+            box.Size = Vector3.new(2.2 * scale, 5.8 * scale, 1.2 * scale)
             box.CFrame = CFrame.new(0, 1.5, 0)
             box.Color3 = color
-            box.Transparency = 0.5
+            box.Transparency = 0.45
             box.Parent = workspace
 
-            -- ── BillboardGui chứa tên + khoảng cách ──
+            -- ── Dây nối từ mình đến player (xuyên tường) ──
+            local direction = (root.Position - RootPart.Position)
+            local line = Instance.new("LineHandleAdornment")
+            line.Adornee = RootPart
+            line.AlwaysOnTop = true
+            line.ZIndex = 4
+            line.Color3 = color
+            line.Transparency = 0.35
+            line.Thickness = 2
+            line.Length = direction.Magnitude
+            line.CFrame = CFrame.new(Vector3.zero, direction)
+            line.Parent = RootPart
+
+            -- ── BillboardGui: tên + khoảng cách, luôn hiện dù ở xa ──
             local billboard = Instance.new("BillboardGui")
             billboard.Name = "ESP_NameTag"
-            billboard.Size = UDim2.new(0, 150, 0, 44)
-            billboard.StudsOffset = Vector3.new(0, 3.4, 0)
+            billboard.Size = UDim2.new(0, 160, 0, 46)
+            billboard.StudsOffset = Vector3.new(0, 4, 0)
             billboard.Adornee = root
             billboard.AlwaysOnTop = true
-            billboard.MaxDistance = 200
+            billboard.MaxDistance = 9999
             billboard.Parent = root
 
             local layout = Instance.new("UIListLayout")
@@ -187,14 +202,14 @@ local function UpdateESP()
 
             local nameLabel = Instance.new("TextLabel")
             nameLabel.Parent = billboard
-            nameLabel.Size = UDim2.new(1, 0, 0, 22)
+            nameLabel.Size = UDim2.new(1, 0, 0, 24)
             nameLabel.BackgroundTransparency = 1
             nameLabel.TextColor3 = color
             nameLabel.Text = player.Name
             nameLabel.Font = Enum.Font.GothamBold
-            nameLabel.TextSize = 14
+            nameLabel.TextSize = 15
             nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-            nameLabel.TextStrokeTransparency = 0.2
+            nameLabel.TextStrokeTransparency = 0.15
 
             local distLabel = Instance.new("TextLabel")
             distLabel.Parent = billboard
@@ -203,11 +218,12 @@ local function UpdateESP()
             distLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
             distLabel.Text = dist .. " m"
             distLabel.Font = Enum.Font.Gotham
-            distLabel.TextSize = 11
+            distLabel.TextSize = 12
             distLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-            distLabel.TextStrokeTransparency = 0.2
+            distLabel.TextStrokeTransparency = 0.15
 
             table.insert(espObjects, box)
+            table.insert(espObjects, line)
             table.insert(espObjects, billboard)
         end
     end
