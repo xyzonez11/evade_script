@@ -150,8 +150,6 @@ local function UpdateESP()
             local humanoid = char:FindFirstChild("Humanoid")
             if not root or not humanoid then continue end
 
-            local dist = math.floor((root.Position - RootPart.Position).Magnitude)
-
             -- Màu: xanh lá = sống, đỏ = gục
             local color = Color3.fromRGB(50, 255, 50)
             if humanoid.Health <= 0 then
@@ -170,18 +168,6 @@ local function UpdateESP()
             box.Transparency = 0.45
             box.Parent = workspace
 
-            -- ── Dây nối từ mình đến player (xuyên tường) ──
-            local direction = (root.Position - RootPart.Position)
-            local line = Instance.new("LineHandleAdornment")
-            line.Adornee = RootPart
-            line.AlwaysOnTop = true
-            line.ZIndex = 4
-            line.Color3 = color
-            line.Transparency = 0.35
-            line.Thickness = 2
-            line.Length = direction.Magnitude
-            line.CFrame = CFrame.new(Vector3.zero, direction)
-            line.Parent = RootPart
 
             -- ── BillboardGui: tên + khoảng cách, luôn hiện dù ở xa ──
             local billboard = Instance.new("BillboardGui")
@@ -211,19 +197,8 @@ local function UpdateESP()
             nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
             nameLabel.TextStrokeTransparency = 0.15
 
-            local distLabel = Instance.new("TextLabel")
-            distLabel.Parent = billboard
-            distLabel.Size = UDim2.new(1, 0, 0, 18)
-            distLabel.BackgroundTransparency = 1
-            distLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-            distLabel.Text = dist .. " m"
-            distLabel.Font = Enum.Font.Gotham
-            distLabel.TextSize = 12
-            distLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-            distLabel.TextStrokeTransparency = 0.15
 
             table.insert(espObjects, box)
-            table.insert(espObjects, line)
             table.insert(espObjects, billboard)
         end
     end
