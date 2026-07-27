@@ -150,13 +150,11 @@ local function UpdateESP()
             local humanoid = char:FindFirstChild("Humanoid")
             if not root or not humanoid then continue end
 
-            -- Màu: xanh lá = sống, đỏ = gục
             local color = Color3.fromRGB(50, 255, 50)
             if humanoid.Health <= 0 then
                 color = Color3.fromRGB(255, 50, 50)
             end
 
-            -- ── Box xuyên tường bao quanh toàn thân ──
             local box = Instance.new("BoxHandleAdornment")
             box.Adornee = root
             box.AlwaysOnTop = true
@@ -165,9 +163,8 @@ local function UpdateESP()
             box.CFrame = CFrame.new(0, 1.5, 0)
             box.Color3 = color
             box.Transparency = 0.45
-            box.Parent = workspace
+            box.Parent = root
 
-            -- ── Tên hiện luôn dù ở xa ──
             local billboard = Instance.new("BillboardGui")
             billboard.Name = "ESP_NameTag"
             billboard.Size = UDim2.new(0, 160, 0, 30)
@@ -228,7 +225,7 @@ local function CreatePlayerListGUI()
 
     local title = Instance.new("TextLabel")
     title.Parent = frame
-    title.Size = UDim2.new(1, 0, 0, 40)
+    title.Size = UDim2.new(1, -45, 0, 40)
     title.Position = UDim2.new(0, 0, 0, 0)
     title.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -245,6 +242,7 @@ local function CreatePlayerListGUI()
     closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     closeBtn.Font = Enum.Font.GothamBold
     closeBtn.TextScaled = true
+    closeBtn.ZIndex = 3
 
     local corner2 = Instance.new("UICorner")
     corner2.Parent = closeBtn
@@ -299,9 +297,9 @@ local function CreatePlayerListGUI()
                 end)
 
                 btn.MouseButton1Click:Connect(function()
-                    TeleportToPlayer(player)
                     screenGui:Destroy()
                     guiOpened = false
+                    TeleportToPlayer(player)
                 end)
             end
         end
