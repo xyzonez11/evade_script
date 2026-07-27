@@ -9,7 +9,6 @@ local Humanoid = Character:WaitForChild("Humanoid")
 local RootPart = Character:FindFirstChild("HumanoidRootPart")
 local Mouse = LP:GetMouse()
 
--- ====== BIẾN ======
 local isClickTeleport = false
 local isRunning = false
 local noclipEnabled = false
@@ -18,13 +17,11 @@ local espObjects = {}
 local selectedPlayer = nil
 local guiOpened = false
 
--- ====== NOTIFICATION ======
 local function Notify(title, text, duration)
     duration = duration or 3
     StarterGui:SetCore("SendNotification", {Title = title, Text = text, Duration = duration})
 end
 
--- ====== TÌM NGƯỜI GỤC ======
 local function FindDownedPlayer()
     if not RootPart then return nil end
     local nearest = nil
@@ -47,7 +44,6 @@ local function FindDownedPlayer()
     return nearest
 end
 
--- ====== TELEPORT ======
 local function TeleportToTarget(targetChar)
     if not targetChar or not RootPart then
         Notify("❌ Lỗi", "Không tìm thấy mục tiêu!", 2)
@@ -66,7 +62,6 @@ local function TeleportToTarget(targetChar)
     return true
 end
 
--- ====== TELEPORT ĐẾN NGƯỜI GỤC ======
 local function TeleportAndRevive()
     if isRunning then return end
     if not Character or not RootPart then
@@ -91,7 +86,6 @@ local function TeleportAndRevive()
     isRunning = false
 end
 
--- ====== TELEPORT ĐẾN NGƯỜI CHƠI BẤT KỲ ======
 local function TeleportToPlayer(player)
     if not player or not player.Character then
         Notify("❌ Lỗi", "Người chơi không hợp lệ!", 2)
@@ -111,29 +105,23 @@ local function TeleportToPlayer(player)
     Notify("✅ Đã teleport", "đến " .. player.Name, 2)
 end
 
--- ====== CLICK TELEPORT ======
 local function ToggleClickTeleport()
     isClickTeleport = not isClickTeleport
     if isClickTeleport then
         Notify("🎯 CLICK TELEPORT", "ĐÃ BẬT! Click chuột để teleport", 3)
         noclipEnabled = true
         for _, part in ipairs(Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
+            if part:IsA("BasePart") then part.CanCollide = false end
         end
     else
         Notify("❌ CLICK TELEPORT", "ĐÃ TẮT", 2)
         noclipEnabled = false
         for _, part in ipairs(Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = true
-            end
+            if part:IsA("BasePart") then part.CanCollide = true end
         end
     end
 end
 
--- ====== ESP BOX + TÊN ======
 local function UpdateESP()
     for _, obj in ipairs(espObjects) do
         pcall(function() obj:Destroy() end)
@@ -150,25 +138,30 @@ local function UpdateESP()
             local humanoid = char:FindFirstChild("Humanoid")
             if not root or not humanoid then continue end
 
+            local dist = (root.Position - RootPart.Position).Magnitude
+
             local color = Color3.fromRGB(50, 255, 50)
             if humanoid.Health <= 0 then
                 color = Color3.fromRGB(255, 50, 50)
             end
 
+            -- Box scale theo khoảng cách
+            local scale = 1 + (dist / 100)
             local box = Instance.new("BoxHandleAdornment")
             box.Adornee = root
             box.AlwaysOnTop = true
             box.ZIndex = 5
-            box.Size = Vector3.new(2.2, 5.8, 1.2)
+            box.Size = Vector3.new(2.2 * scale, 5.8 * scale, 1.2 * scale)
             box.CFrame = CFrame.new(0, 1.5, 0)
             box.Color3 = color
-            box.Transparency = 0.45
+            box.Transparency = 0.5
             box.Parent = root
 
+            -- Tên luôn hiện dù ở xa
             local billboard = Instance.new("BillboardGui")
             billboard.Name = "ESP_NameTag"
-            billboard.Size = UDim2.new(0, 160, 0, 30)
-            billboard.StudsOffset = Vector3.new(0, 4, 0)
+            billboard.Size = UDim2.new(0, 150, 0, 30)
+            billboard.StudsOffset = Vector3.new(0, 3.4, 0)
             billboard.Adornee = root
             billboard.AlwaysOnTop = true
             billboard.MaxDistance = 9999
@@ -181,9 +174,9 @@ local function UpdateESP()
             nameLabel.TextColor3 = color
             nameLabel.Text = player.Name
             nameLabel.Font = Enum.Font.GothamBold
-            nameLabel.TextSize = 15
+            nameLabel.TextSize = 14
             nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-            nameLabel.TextStrokeTransparency = 0.15
+            nameLabel.TextStrokeTransparency = 0.2
 
             table.insert(espObjects, box)
             table.insert(espObjects, billboard)
@@ -191,7 +184,6 @@ local function UpdateESP()
     end
 end
 
--- ====== GUI BẢNG CHỌN NGƯỜI CHƠI ======
 local function CreatePlayerListGUI()
     pcall(function()
         local VirtualUser = game:GetService("VirtualUser")
@@ -268,11 +260,8 @@ local function CreatePlayerListGUI()
 
     local function UpdatePlayerList()
         for _, child in ipairs(scrollFrame:GetChildren()) do
-            if child:IsA("TextButton") then
-                child:Destroy()
-            end
+            if child:IsA("TextButton") then child:Destroy() end
         end
-
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= LP then
                 local btn = Instance.new("TextButton")
@@ -313,7 +302,6 @@ local function CreatePlayerListGUI()
     return screenGui
 end
 
--- ====== MỞ/ĐÓNG GUI BẰNG PHÍM X ======
 local function ToggleGUI()
     if guiOpened then
         local gui = game:GetService("CoreGui"):FindFirstChild("TeleportGUI")
@@ -324,24 +312,13 @@ local function ToggleGUI()
     end
 end
 
--- ====== PHÍM BẤM ======
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-
-    if input.KeyCode == Enum.KeyCode.V then
-        TeleportAndRevive()
-    end
-
-    if input.KeyCode == Enum.KeyCode.Z then
-        ToggleClickTeleport()
-    end
-
-    if input.KeyCode == Enum.KeyCode.X then
-        ToggleGUI()
-    end
+    if input.KeyCode == Enum.KeyCode.V then TeleportAndRevive() end
+    if input.KeyCode == Enum.KeyCode.Z then ToggleClickTeleport() end
+    if input.KeyCode == Enum.KeyCode.X then ToggleGUI() end
 end)
 
--- ====== CLICK CHUỘT ======
 Mouse.Button1Down:Connect(function()
     if not isClickTeleport then return end
     if not RootPart then return end
@@ -358,25 +335,18 @@ Mouse.Button1Down:Connect(function()
     end
 end)
 
--- ====== NOCLIP ======
 RunService.Heartbeat:Connect(function()
     if noclipEnabled and Character then
         for _, part in ipairs(Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
+            if part:IsA("BasePart") then part.CanCollide = false end
         end
     end
 end)
 
--- ====== CẬP NHẬT ESP LIÊN TỤC ======
 RunService.Heartbeat:Connect(function()
-    if espEnabled then
-        UpdateESP()
-    end
+    if espEnabled then UpdateESP() end
 end)
 
--- ====== RESPAWN ======
 LP.CharacterAdded:Connect(function(newChar)
     Character = newChar
     Humanoid = Character:WaitForChild("Humanoid")
@@ -389,7 +359,6 @@ LP.CharacterAdded:Connect(function(newChar)
     Notify("🔄 Respawn", "Nhân vật mới đã xuất hiện!", 2)
 end)
 
--- ====== KHỞI ĐỘNG ======
 Notify("🚀 SCRIPT ĐÃ CHẠY!", "[V] Teleport gục | [Z] Click TP | [X] Bảng chọn TP", 4)
 print("✅ Script đã chạy!")
 print("📌 [V] Teleport đến người gục")
