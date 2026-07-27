@@ -15,6 +15,7 @@ local isRunning = false
 local noclipEnabled = false
 local espEnabled = true
 local espObjects = {}
+local selectedPlayer = nil
 local guiOpened = false
 
 -- ====== NOTIFICATION ======
@@ -132,71 +133,61 @@ local function ToggleClickTeleport()
     end
 end
 
--- ====== ESP HỘP NHỎ + BÁM SÁT (CHUẨN NHẤT) ======
-local function CreateBoxESP(player)
-    if not player.Character then return end
-    local char = player.Character
-    local humanoid = char:FindFirstChild("Humanoid")
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not humanoid or not root then return end
-    
-    -- Màu sắc: Xanh = sống, Đỏ = gục
-    local isAlive = humanoid.Health > 0
-    local boxColor = isAlive and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 50, 50)
-    local textColor = isAlive and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 50, 50)
-    local statusText = player.Name .. (isAlive and "" or " ❌")
-    
-    -- HỘP ESP NHỎ (BoxHandleAdornment)
-    local box = Instance.new("BoxHandleAdornment")
-    box.Name = "ESP_Box"
-    box.Size = Vector3.new(4, 4.5, 2) -- Hộp nhỏ vừa người
-    box.Adornee = root
-    box.ZIndex = 10
-    box.AlwaysOnTop = true
-    box.Color3 = boxColor
-    box.Transparency = 0.5
-    box.Thickness = 0.5 -- Viền mỏng
-    
-    table.insert(espObjects, box)
-    
-    -- TÊN ESP (bám sát người chơi, KHÔNG ICON)
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "ESP_NameTag"
-    billboard.Size = UDim2.new(0, 200, 0, 40)
-    billboard.Adornee = root
-    billboard.AlwaysOnTop = true
-    billboard.Parent = char
-    billboard.MaxDistance = 300
-    
-    local label = Instance.new("TextLabel")
-    label.Name = "Label"
-    label.Parent = billboard
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.Position = UDim2.new(0, 0, 0, -30)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = textColor
-    label.TextScaled = true
-    label.Text = statusText
-    label.Font = Enum.Font.GothamBold
-    label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    label.TextStrokeTransparency = 0.3
-    
-    table.insert(espObjects, billboard)
-    table.insert(espObjects, label)
-end
-
+-- ====== ESP BOX + TÊN ======
 local function UpdateESP()
-    -- Xóa ESP cũ
+    -- Xoá ESP cũ
     for _, obj in ipairs(espObjects) do
         pcall(function() obj:Destroy() end)
     end
     espObjects = {}
-    
+
     if not espEnabled then return end
-    
+
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LP then
-            CreateBoxESP(player)
+        if player ~= LP and player.Character then
+            local char = player.Character
+            local root = char:FindFirstChild("HumanoidRootPart")
+            local humanoid = char:FindFirstChild("Humanoid")
+            if not root or not humanoid then continue end
+
+            -- Màu: xanh lá = sống, đỏ = gục
+            local color = Color3.fromRGB(50, 255, 50)
+            if humanoid.Health <= 0 then
+                color = Color3.fromRGB(255, 50, 50)
+            end
+
+            -- ── Box bao quanh toàn thân ──
+            local box = Instance.new("SelectionBox")
+            box.Adornee = char
+            box.Color3 = color
+            box.LineThickness = 0.04
+            box.SurfaceTransparency = 0.85
+            box.SurfaceColor3 = color
+            box.Parent = workspace
+
+            -- ── Tên hiện phía trên đầu ──
+            local billboard = Instance.new("BillboardGui")
+            billboard.Name = "ESP_NameTag"
+            billboard.Size = UDim2.new(0, 140, 0, 28)
+            billboard.StudsOffset = Vector3.new(0, 3.2, 0)
+            billboard.Adornee = root
+            billboard.AlwaysOnTop = true
+            billboard.MaxDistance = 200
+            billboard.Parent = root
+
+            local label = Instance.new("TextLabel")
+            label.Parent = billboard
+            label.Size = UDim2.new(1, 0, 1, 0)
+            label.BackgroundTransparency = 1
+            label.TextColor3 = color
+            label.TextScaled = true
+            label.Text = player.Name
+            label.Font = Enum.Font.GothamBold
+            label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+            label.TextStrokeTransparency = 0.2
+
+            table.insert(espObjects, box)
+            table.insert(espObjects, billboard)
         end
     end
 end
@@ -208,12 +199,12 @@ local function CreatePlayerListGUI()
         VirtualUser:CaptureController()
         VirtualUser:ClickButton2(Vector2.new(0, 0))
     end)
-    
+
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "TeleportGUI"
     screenGui.Parent = game:GetService("CoreGui")
     screenGui.Enabled = true
-    
+
     local frame = Instance.new("Frame")
     frame.Name = "MainFrame"
     frame.Parent = screenGui
@@ -223,16 +214,16 @@ local function CreatePlayerListGUI()
     frame.BackgroundTransparency = 0.1
     frame.Active = true
     frame.Draggable = true
-    
+
     local corner = Instance.new("UICorner")
     corner.Parent = frame
     corner.CornerRadius = UDim.new(0, 10)
-    
+
     local stroke = Instance.new("UIStroke")
     stroke.Parent = frame
     stroke.Color = Color3.fromRGB(100, 100, 255)
     stroke.Thickness = 2
-    
+
     local title = Instance.new("TextLabel")
     title.Parent = frame
     title.Size = UDim2.new(1, 0, 0, 40)
@@ -242,7 +233,7 @@ local function CreatePlayerListGUI()
     title.Text = "🚀 TELEPORT TO PLAYER"
     title.Font = Enum.Font.GothamBold
     title.TextScaled = true
-    
+
     local closeBtn = Instance.new("TextButton")
     closeBtn.Parent = frame
     closeBtn.Size = UDim2.new(0, 40, 0, 40)
@@ -252,15 +243,15 @@ local function CreatePlayerListGUI()
     closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     closeBtn.Font = Enum.Font.GothamBold
     closeBtn.TextScaled = true
-    
+
     local corner2 = Instance.new("UICorner")
     corner2.Parent = closeBtn
-    
+
     closeBtn.MouseButton1Click:Connect(function()
         screenGui:Destroy()
         guiOpened = false
     end)
-    
+
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Parent = frame
     scrollFrame.Size = UDim2.new(1, 0, 1, -40)
@@ -269,19 +260,19 @@ local function CreatePlayerListGUI()
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     scrollFrame.ScrollBarThickness = 5
     scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    
+
     local listLayout = Instance.new("UIListLayout")
     listLayout.Parent = scrollFrame
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
     listLayout.Padding = UDim.new(0, 5)
-    
+
     local function UpdatePlayerList()
         for _, child in ipairs(scrollFrame:GetChildren()) do
             if child:IsA("TextButton") then
                 child:Destroy()
             end
         end
-        
+
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= LP then
                 local btn = Instance.new("TextButton")
@@ -293,18 +284,18 @@ local function CreatePlayerListGUI()
                 btn.Font = Enum.Font.Gotham
                 btn.TextScaled = true
                 btn.Text = "📌 " .. player.Name
-                
+
                 local btnCorner = Instance.new("UICorner")
                 btnCorner.Parent = btn
                 btnCorner.CornerRadius = UDim.new(0, 5)
-                
+
                 btn.MouseEnter:Connect(function()
                     btn.BackgroundColor3 = Color3.fromRGB(80, 80, 120)
                 end)
                 btn.MouseLeave:Connect(function()
                     btn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
                 end)
-                
+
                 btn.MouseButton1Click:Connect(function()
                     TeleportToPlayer(player)
                     screenGui:Destroy()
@@ -313,16 +304,16 @@ local function CreatePlayerListGUI()
             end
         end
     end
-    
+
     UpdatePlayerList()
     Players.PlayerAdded:Connect(UpdatePlayerList)
     Players.PlayerRemoving:Connect(UpdatePlayerList)
-    
+
     guiOpened = true
     return screenGui
 end
 
--- ====== MỞ/ĐÓNG GUI ======
+-- ====== MỞ/ĐÓNG GUI BẰNG PHÍM X ======
 local function ToggleGUI()
     if guiOpened then
         local gui = game:GetService("CoreGui"):FindFirstChild("TeleportGUI")
@@ -336,15 +327,15 @@ end
 -- ====== PHÍM BẤM ======
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-    
+
     if input.KeyCode == Enum.KeyCode.V then
         TeleportAndRevive()
     end
-    
+
     if input.KeyCode == Enum.KeyCode.Z then
         ToggleClickTeleport()
     end
-    
+
     if input.KeyCode == Enum.KeyCode.X then
         ToggleGUI()
     end
@@ -403,8 +394,8 @@ Notify("🚀 SCRIPT ĐÃ CHẠY!", "[V] Teleport gục | [Z] Click TP | [X] Bả
 print("✅ Script đã chạy!")
 print("📌 [V] Teleport đến người gục")
 print("📌 [Z] Bật/Tắt Click Teleport")
-print("📌 [X] Mở bảng chọn người chơi")
-print("👁️ ESP hộp nhỏ: Xanh = sống, Đỏ = gục")
+print("📌 [X] Mở bảng chọn người chơi để teleport")
+print("👁️ ESP: Box bao quanh nhân vật — Xanh lá = sống, Đỏ = gục")
 
 wait(0.5)
 UpdateESP()
