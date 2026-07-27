@@ -132,7 +132,7 @@ local function ToggleClickTeleport()
     end
 end
 
--- ====== ESP HỘP NHỎ + BÁM SÁT ======
+-- ====== ESP HỘP NHỎ + BÁM SÁT (CHUẨN NHẤT) ======
 local function CreateBoxESP(player)
     if not player.Character then return end
     local char = player.Character
@@ -140,16 +140,16 @@ local function CreateBoxESP(player)
     local root = char:FindFirstChild("HumanoidRootPart")
     if not humanoid or not root then return end
     
-    -- Xác định màu: sống = xanh lá, gục = đỏ
+    -- Màu sắc: Xanh = sống, Đỏ = gục
     local isAlive = humanoid.Health > 0
     local boxColor = isAlive and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 50, 50)
     local textColor = isAlive and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 50, 50)
     local statusText = player.Name .. (isAlive and "" or " ❌")
     
-    -- 1. HỘP ESP NHỎ (BoxHandleAdornment)
+    -- HỘP ESP NHỎ (BoxHandleAdornment)
     local box = Instance.new("BoxHandleAdornment")
     box.Name = "ESP_Box"
-    box.Size = Vector3.new(4, 4.5, 2) -- Hộp nhỏ, vừa người
+    box.Size = Vector3.new(4, 4.5, 2) -- Hộp nhỏ vừa người
     box.Adornee = root
     box.ZIndex = 10
     box.AlwaysOnTop = true
@@ -159,7 +159,7 @@ local function CreateBoxESP(player)
     
     table.insert(espObjects, box)
     
-    -- 2. TÊN ESP (bám sát người chơi, KHÔNG ICON)
+    -- TÊN ESP (bám sát người chơi, KHÔNG ICON)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "ESP_NameTag"
     billboard.Size = UDim2.new(0, 200, 0, 40)
@@ -172,7 +172,7 @@ local function CreateBoxESP(player)
     label.Name = "Label"
     label.Parent = billboard
     label.Size = UDim2.new(1, 0, 1, 0)
-    label.Position = UDim2.new(0, 0, 0, -30) -- Đặt tên phía trên hộp
+    label.Position = UDim2.new(0, 0, 0, -30)
     label.BackgroundTransparency = 1
     label.TextColor3 = textColor
     label.TextScaled = true
