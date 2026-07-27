@@ -132,48 +132,37 @@ local function ToggleClickTeleport()
     end
 end
 
--- ====== ESP NEON GLOW BAO PHỦ NGƯỜI CHƠI ======
-local function CreateNeonESP(player)
+-- ====== ESP HỘP NHỎ + BÁM SÁT ======
+local function CreateBoxESP(player)
     if not player.Character then return end
     local char = player.Character
     local humanoid = char:FindFirstChild("Humanoid")
     local root = char:FindFirstChild("HumanoidRootPart")
     if not humanoid or not root then return end
     
-    -- Xác định màu: sống = xanh neon, gục = đỏ neon
+    -- Xác định màu: sống = xanh lá, gục = đỏ
     local isAlive = humanoid.Health > 0
-    local mainColor = isAlive and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 50, 50)
-    local outlineColor = isAlive and Color3.fromRGB(0, 255, 200) or Color3.fromRGB(255, 100, 100)
-    local statusText = isAlive and "🟢 " .. player.Name or "🔴 " .. player.Name .. " (GỤC)"
+    local boxColor = isAlive and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 50, 50)
+    local textColor = isAlive and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 50, 50)
+    local statusText = player.Name .. (isAlive and "" or " ❌")
     
-    -- 1. HIGHLIGHT (viền sáng bao quanh toàn bộ nhân vật)
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "ESP_Neon"
-    highlight.Parent = char
-    highlight.Adornee = char
-    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    highlight.FillColor = mainColor
-    highlight.FillTransparency = 0.6
-    highlight.OutlineColor = outlineColor
-    highlight.OutlineTransparency = 0.1
+    -- 1. HỘP ESP NHỎ (BoxHandleAdornment)
+    local box = Instance.new("BoxHandleAdornment")
+    box.Name = "ESP_Box"
+    box.Size = Vector3.new(4, 4.5, 2) -- Hộp nhỏ, vừa người
+    box.Adornee = root
+    box.ZIndex = 10
+    box.AlwaysOnTop = true
+    box.Color3 = boxColor
+    box.Transparency = 0.5
+    box.Thickness = 0.5 -- Viền mỏng
     
-    table.insert(espObjects, highlight)
+    table.insert(espObjects, box)
     
-    -- 2. POINT LIGHT (hiệu ứng phát sáng neon)
-    local light = Instance.new("PointLight")
-    light.Name = "ESP_Light"
-    light.Parent = root
-    light.Color = mainColor
-    light.Brightness = 4
-    light.Range = 15
-    light.Shadows = false
-    
-    table.insert(espObjects, light)
-    
-    -- 3. TÊN ESP (bám sát nhân vật)
+    -- 2. TÊN ESP (bám sát người chơi, KHÔNG ICON)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "ESP_NameTag"
-    billboard.Size = UDim2.new(0, 300, 0, 50)
+    billboard.Size = UDim2.new(0, 200, 0, 40)
     billboard.Adornee = root
     billboard.AlwaysOnTop = true
     billboard.Parent = char
@@ -183,13 +172,14 @@ local function CreateNeonESP(player)
     label.Name = "Label"
     label.Parent = billboard
     label.Size = UDim2.new(1, 0, 1, 0)
+    label.Position = UDim2.new(0, 0, 0, -30) -- Đặt tên phía trên hộp
     label.BackgroundTransparency = 1
-    label.TextColor3 = mainColor
+    label.TextColor3 = textColor
     label.TextScaled = true
     label.Text = statusText
     label.Font = Enum.Font.GothamBold
     label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    label.TextStrokeTransparency = 0.2
+    label.TextStrokeTransparency = 0.3
     
     table.insert(espObjects, billboard)
     table.insert(espObjects, label)
@@ -206,7 +196,7 @@ local function UpdateESP()
     
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LP then
-            CreateNeonESP(player)
+            CreateBoxESP(player)
         end
     end
 end
@@ -414,7 +404,7 @@ print("✅ Script đã chạy!")
 print("📌 [V] Teleport đến người gục")
 print("📌 [Z] Bật/Tắt Click Teleport")
 print("📌 [X] Mở bảng chọn người chơi")
-print("👁️ ESP Neon: Xanh = sống, Đỏ = gục")
+print("👁️ ESP hộp nhỏ: Xanh = sống, Đỏ = gục")
 
 wait(0.5)
 UpdateESP()
