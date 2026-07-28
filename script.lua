@@ -159,7 +159,7 @@ local function CreateBoxESP(player)
     
     table.insert(espObjects, box)
     
-    -- TÊN ESP (bám sát người chơi, KHÔNG ICON)
+    -- TÊN ESP (bám sát người chơi)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "ESP_NameTag"
     billboard.Size = UDim2.new(0, 200, 0, 40)
@@ -185,6 +185,7 @@ local function CreateBoxESP(player)
     table.insert(espObjects, label)
 end
 
+-- Cập nhật ESP
 local function UpdateESP()
     -- Xóa ESP cũ
     for _, obj in ipairs(espObjects) do
