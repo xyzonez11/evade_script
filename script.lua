@@ -14,6 +14,7 @@ local isRunning = false
 local noclipEnabled = false
 local espEnabled = true
 local espObjects = {}
+local npcEspObjects = {}
 local guiOpened = false
 
 -- ====== THÔNG BÁO ======
@@ -102,15 +103,13 @@ local function TeleportToPlayer(player)
     Notify("✅ Đã teleport", "đến " .. player.Name, 2)
 end
 
--- ====== PHỤC HỒI COLLISION AN TOÀN (tránh bị bắn ra khỏi tường) ======
+-- ====== PHỤC HỒI COLLISION AN TOÀN ======
+-- Không dời lên, chỉ zero velocity rồi đợi 2 frame trước khi bật lại collision
 local function SafeRestoreCollision()
-    -- Dời lên 1 stud trước để thoát khỏi tường nếu đang bị overlap
     if RootPart then
-        RootPart.CFrame = RootPart.CFrame + Vector3.new(0, 1, 0)
         RootPart.Velocity = Vector3.new(0, 0, 0)
         RootPart.RotVelocity = Vector3.new(0, 0, 0)
     end
-    -- Đợi 2 frame để engine cập nhật vị trí, rồi mới bật lại collision
     task.wait()
     task.wait()
     if Character then
@@ -129,7 +128,6 @@ end
 -- ====== CLICK TELEPORT (NOCLIP) ======
 local function ToggleClickTeleport()
     isClickTeleport = not isClickTeleport
-
     if isClickTeleport then
         noclipEnabled = true
         if RootPart then
@@ -139,12 +137,11 @@ local function ToggleClickTeleport()
     else
         noclipEnabled = false
         Notify("❌ CLICK TELEPORT", "ĐÃ TẮT", 2)
-        -- Phục hồi collision nhẹ nhàng, tránh bị bắn ra ngoài
         task.spawn(SafeRestoreCollision)
     end
 end
 
--- ====== XỬ LÝ NOCLIP MỖI FRAME ======
+-- ====== NOCLIP MỖI FRAME ======
 RunService.Heartbeat:Connect(function()
     if noclipEnabled and Character then
         for _, part in ipairs(Character:GetDescendants()) do
@@ -155,35 +152,30 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- ====== GẮN HEALTHCHANGED — tái kết nối sau respawn ======
+-- ====== HEALTHCHANGED — tái kết nối sau respawn ======
 local healthConn = nil
 local function ConnectHealthChanged()
     if healthConn then
         healthConn:Disconnect()
         healthConn = nil
     end
--- ====== XỬ LÝ KHI BỊ GỤC (CHỈ RESET VẬN TỐC) ======
     healthConn = Humanoid.HealthChanged:Connect(function()
-    if Humanoid.Health <= 0 then
-        -- Reset vận tốc để tránh văng
-        if RootPart then
-            RootPart.Velocity = Vector3.new(0, 0, 0)
-            RootPart.RotVelocity = Vector3.new(0, 0, 0)
-        end
-        if Humanoid then
-            Humanoid.Sit = false
-            Humanoid.PlatformStand = false
-        end
-        -- KHÔNG TẮT NOCLIP
-        -- ĐỂ RESPAWN TỰ XỬ LÝ
-    end
-end)
-            -- Reset vật lý ngay khi gục để không bị văng
+        if Humanoid.Health <= 0 then
+            -- Reset vận tốc ngay khi gục để không bị văng
             if RootPart then
                 RootPart.Velocity = Vector3.new(0, 0, 0)
                 RootPart.RotVelocity = Vector3.new(0, 0, 0)
             end
-            -- Phục hồi collision an toàn
+            if Humanoid then
+                Humanoid.Sit = false
+                Humanoid.PlatformStand = false
+            end
+            -- Tắt noclip nếu đang bật
+            if isClickTeleport or noclipEnabled then
+                isClickTeleport = false
+                noclipEnabled = false
+                Notify("🔄", "Đã tự tắt Click Teleport khi bị gục!", 2)
+            end
             task.spawn(SafeRestoreCollision)
         end
     end)
@@ -248,11 +240,76 @@ local function UpdateESP()
     end
 end
 
--- Loop riêng cho ESP — không dùng Heartbeat để tránh lag
+-- ====== NEXTBOT / NPC ESP (màu cam) ======
+local function UpdateNPCESP()
+    for _, obj in ipairs(npcEspObjects) do
+        pcall(function() obj:Destroy() end)
+    end
+    npcEspObjects = {}
+
+    if not espEnabled or not RootPart then return end
+
+    -- Tập hợp các character của player để loại ra
+    local playerChars = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Character then
+            playerChars[p.Character] = true
+        end
+    end
+
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        -- Tìm HumanoidRootPart không thuộc player nào
+        if obj:IsA("BasePart") and obj.Name == "HumanoidRootPart" then
+            local model = obj.Parent
+            if model and model:IsA("Model") and not playerChars[model] then
+                local humanoid = model:FindFirstChildOfClass("Humanoid")
+                if humanoid and humanoid.Health > 0 then
+                    local dist = (obj.Position - RootPart.Position).Magnitude
+                    local scale = 1 + (dist / 100)
+
+                    local box = Instance.new("BoxHandleAdornment")
+                    box.Adornee = obj
+                    box.AlwaysOnTop = true
+                    box.ZIndex = 5
+                    box.Size = Vector3.new(2.2 * scale, 5.8 * scale, 1.2 * scale)
+                    box.CFrame = CFrame.new(0, 1.5, 0)
+                    box.Color3 = Color3.fromRGB(255, 140, 0) -- cam
+                    box.Transparency = 0.4
+                    box.Parent = obj
+
+                    local billboard = Instance.new("BillboardGui")
+                    billboard.Name = "ESP_NPCTag"
+                    billboard.Size = UDim2.new(0, 160, 0, 30)
+                    billboard.StudsOffset = Vector3.new(0, 3.4, 0)
+                    billboard.Adornee = obj
+                    billboard.AlwaysOnTop = true
+                    billboard.MaxDistance = 9999
+                    billboard.Parent = obj
+
+                    local nameLabel = Instance.new("TextLabel")
+                    nameLabel.Parent = billboard
+                    nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                    nameLabel.BackgroundTransparency = 1
+                    nameLabel.TextColor3 = Color3.fromRGB(255, 140, 0)
+                    nameLabel.Text = "⚠ " .. model.Name
+                    nameLabel.Font = Enum.Font.GothamBold
+                    nameLabel.TextSize = 14
+                    nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+                    nameLabel.TextStrokeTransparency = 0.2
+
+                    table.insert(npcEspObjects, box)
+                    table.insert(npcEspObjects, billboard)
+                end
+            end
+        end
+    end
+end
+
 task.spawn(function()
     while true do
         if espEnabled then
             UpdateESP()
+            UpdateNPCESP()
         end
         task.wait(0.5)
     end
@@ -399,7 +456,6 @@ local function CreatePlayerListGUI()
 
     UpdatePlayerList()
 
-    -- Lưu connection để disconnect khi GUI đóng, tránh leak
     local connAdded    = Players.PlayerAdded:Connect(UpdatePlayerList)
     local connRemoving = Players.PlayerRemoving:Connect(UpdatePlayerList)
 
@@ -410,7 +466,6 @@ local function CreatePlayerListGUI()
         guiOpened = false
     end)
 
-    -- Tự dọn connection nếu GUI bị destroy theo cách khác
     screenGui.AncestryChanged:Connect(function()
         if not screenGui.Parent then
             pcall(function() connAdded:Disconnect() end)
@@ -455,18 +510,16 @@ Mouse.Button1Down:Connect(function()
     RootPart.Velocity = Vector3.new(0, 0, 0)
 end)
 
--- ====== RESPAWN — tái kết nối mọi thứ ======
+-- ====== RESPAWN ======
 LP.CharacterAdded:Connect(function(newChar)
     Character = newChar
     Humanoid = newChar:WaitForChild("Humanoid")
     RootPart = newChar:WaitForChild("HumanoidRootPart")
     isRunning = false
-    -- Tắt noclip nếu đang bật khi respawn
     if isClickTeleport or noclipEnabled then
         isClickTeleport = false
         noclipEnabled = false
     end
-    -- Tái kết nối HealthChanged với Humanoid mới
     ConnectHealthChanged()
     Notify("🔄 Respawn", "Nhân vật mới đã xuất hiện!", 2)
 end)
