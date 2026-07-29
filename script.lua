@@ -162,13 +162,22 @@ local function ConnectHealthChanged()
         healthConn:Disconnect()
         healthConn = nil
     end
+-- ====== XỬ LÝ KHI BỊ GỤC (CHỈ RESET VẬN TỐC) ======
     healthConn = Humanoid.HealthChanged:Connect(function()
-        if Humanoid.Health <= 0 then
-            if isClickTeleport or noclipEnabled then
-                isClickTeleport = false
-                noclipEnabled = false
-                Notify("🔄", "Đã tự tắt Click Teleport khi bị gục!", 2)
-            end
+    if Humanoid.Health <= 0 then
+        -- Reset vận tốc để tránh văng
+        if RootPart then
+            RootPart.Velocity = Vector3.new(0, 0, 0)
+            RootPart.RotVelocity = Vector3.new(0, 0, 0)
+        end
+        if Humanoid then
+            Humanoid.Sit = false
+            Humanoid.PlatformStand = false
+        end
+        -- KHÔNG TẮT NOCLIP
+        -- ĐỂ RESPAWN TỰ XỬ LÝ
+    end
+end)
             -- Reset vật lý ngay khi gục để không bị văng
             if RootPart then
                 RootPart.Velocity = Vector3.new(0, 0, 0)
