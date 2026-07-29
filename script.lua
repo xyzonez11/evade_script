@@ -14,7 +14,6 @@ local isRunning = false
 local noclipEnabled = false
 local espEnabled = true
 local espObjects = {}
-local selectedPlayer = nil
 local guiOpened = false
 
 local function Notify(title, text, duration)
@@ -105,23 +104,68 @@ local function TeleportToPlayer(player)
     Notify("✅ Đã teleport", "đến " .. player.Name, 2)
 end
 
+-- ====== CLICK TELEPORT (CÓ RESET VẬT LÝ) ======
 local function ToggleClickTeleport()
     isClickTeleport = not isClickTeleport
+    
     if isClickTeleport then
         Notify("🎯 CLICK TELEPORT", "ĐÃ BẬT! Click chuột để teleport", 3)
         noclipEnabled = true
         for _, part in ipairs(Character:GetDescendants()) do
-            if part:IsA("BasePart") then part.CanCollide = false end
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+        if RootPart then
+            RootPart.Velocity = Vector3.new(0, 0, 0)
         end
     else
         Notify("❌ CLICK TELEPORT", "ĐÃ TẮT", 2)
         noclipEnabled = false
         for _, part in ipairs(Character:GetDescendants()) do
-            if part:IsA("BasePart") then part.CanCollide = true end
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+        if RootPart then
+            RootPart.Velocity = Vector3.new(0, 0, 0)
+            RootPart.RotVelocity = Vector3.new(0, 0, 0)
+        end
+        if Humanoid then
+            Humanoid.Sit = false
+            Humanoid.PlatformStand = false
         end
     end
 end
 
+-- ====== TỰ ĐỘNG TẮT NOCLIP KHI BỊ GỤC (SỬA LỖI VĂNG) ======
+Humanoid.HealthChanged:Connect(function()
+    if Humanoid.Health <= 0 then
+        if isClickTeleport then
+            isClickTeleport = false
+            noclipEnabled = false
+            Notify("🔄", "Đã tự tắt Click Teleport khi bị gục!", 2)
+        end
+        
+        if RootPart then
+            RootPart.Velocity = Vector3.new(0, 0, 0)
+            RootPart.RotVelocity = Vector3.new(0, 0, 0)
+        end
+        
+        for _, part in ipairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+        
+        if Humanoid then
+            Humanoid.Sit = false
+            Humanoid.PlatformStand = false
+        end
+    end
+end)
+
+-- ====== ESP ======
 local function UpdateESP()
     for _, obj in ipairs(espObjects) do
         pcall(function() obj:Destroy() end)
@@ -139,7 +183,6 @@ local function UpdateESP()
             if not root or not humanoid then continue end
 
             local dist = (root.Position - RootPart.Position).Magnitude
-
             local color = Color3.fromRGB(50, 255, 50)
             if humanoid.Health <= 0 then
                 color = Color3.fromRGB(255, 50, 50)
@@ -182,6 +225,7 @@ local function UpdateESP()
     end
 end
 
+-- ====== GUI BẢNG CHỌN ======
 local function CreatePlayerListGUI()
     pcall(function()
         local VirtualUser = game:GetService("VirtualUser")
@@ -197,8 +241,8 @@ local function CreatePlayerListGUI()
     local frame = Instance.new("Frame")
     frame.Name = "MainFrame"
     frame.Parent = screenGui
-    frame.Size = UDim2.new(0, 300, 0, 500)
-    frame.Position = UDim2.new(0.5, -150, 0.5, -250)
+    frame.Size = UDim2.new(0, 320, 0, 500)
+    frame.Position = UDim2.new(0.5, -160, 0.5, -250)
     frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
     frame.BackgroundTransparency = 0.1
     frame.Active = true
@@ -263,45 +307,30 @@ local function CreatePlayerListGUI()
 
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= LP then
-                -- Nút cao hơn để chứa avatar
                 local btn = Instance.new("TextButton")
                 btn.Parent = scrollFrame
                 btn.Size = UDim2.new(1, -10, 0, 50)
                 btn.Position = UDim2.new(0, 5, 0, 0)
                 btn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-                btn.Text = ""  -- text trống, dùng label riêng
+                btn.Text = ""
                 btn.AutoButtonColor = false
 
                 local btnCorner = Instance.new("UICorner")
                 btnCorner.Parent = btn
                 btnCorner.CornerRadius = UDim.new(0, 8)
 
-                -- Avatar bên trái
                 local avatar = Instance.new("ImageLabel")
                 avatar.Parent = btn
                 avatar.Size = UDim2.new(0, 38, 0, 38)
                 avatar.Position = UDim2.new(0, 6, 0.5, -19)
                 avatar.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
                 avatar.BorderSizePixel = 0
-                avatar.Image = ""  -- load async bên dưới
+                avatar.Image = ""
 
                 local avatarCorner = Instance.new("UICorner")
                 avatarCorner.Parent = avatar
                 avatarCorner.CornerRadius = UDim.new(0, 6)
 
-                -- Tên bên phải avatar
-                local nameLabel = Instance.new("TextLabel")
-                nameLabel.Parent = btn
-                nameLabel.Size = UDim2.new(1, -58, 1, 0)
-                nameLabel.Position = UDim2.new(0, 52, 0, 0)
-                nameLabel.BackgroundTransparency = 1
-                nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-                nameLabel.Font = Enum.Font.GothamBold
-                nameLabel.TextSize = 14
-                nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-                nameLabel.Text = player.Name
-
-                -- Load avatar async (không block UI)
                 task.spawn(function()
                     local ok, url = pcall(function()
                         return Players:GetUserThumbnailAsync(
@@ -314,6 +343,17 @@ local function CreatePlayerListGUI()
                         avatar.Image = url
                     end
                 end)
+
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Parent = btn
+                nameLabel.Size = UDim2.new(1, -58, 1, 0)
+                nameLabel.Position = UDim2.new(0, 52, 0, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                nameLabel.Font = Enum.Font.GothamBold
+                nameLabel.TextSize = 14
+                nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+                nameLabel.Text = player.Name
 
                 btn.MouseEnter:Connect(function()
                     btn.BackgroundColor3 = Color3.fromRGB(80, 80, 120)
@@ -348,6 +388,21 @@ local function ToggleGUI()
         CreatePlayerListGUI()
     end
 end
+
+-- ====== CHỐNG ĐẨY KHI XOAY CAMERA ======
+RunService.Heartbeat:Connect(function()
+    if not isClickTeleport then
+        for _, part in ipairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide == false then
+                part.CanCollide = true
+            end
+        end
+        if RootPart and RootPart.Velocity.Magnitude > 50 then
+            RootPart.Velocity = Vector3.new(0, 0, 0)
+            RootPart.RotVelocity = Vector3.new(0, 0, 0)
+        end
+    end
+end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
@@ -402,6 +457,7 @@ print("📌 [V] Teleport đến người gục")
 print("📌 [Z] Bật/Tắt Click Teleport")
 print("📌 [X] Mở bảng chọn người chơi để teleport")
 print("👁️ ESP: Box xuyên tường + tên — Xanh lá = sống, Đỏ = gục")
+print("🛡️ Tự động tắt Noclip khi bị gục để tránh văng")
 
 wait(0.5)
 UpdateESP()
