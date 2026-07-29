@@ -16,25 +16,25 @@ local espEnabled = true
 local espObjects = {}
 local guiOpened = false
 
+-- ====== THÔNG BÁO ======
 local function Notify(title, text, duration)
     duration = duration or 3
     StarterGui:SetCore("SendNotification", {Title = title, Text = text, Duration = duration})
 end
 
+-- ====== TÌM NGƯỜI GỤC GẦN NHẤT ======
 local function FindDownedPlayer()
     if not RootPart then return nil end
-    local nearest = nil
-    local nearestDist = math.huge
+    local nearest, nearestDist = nil, math.huge
     local myPos = RootPart.Position
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LP and player.Character then
-            local targetChar = player.Character
-            local humanoid = targetChar:FindFirstChild("Humanoid")
-            local rootPart = targetChar:FindFirstChild("HumanoidRootPart")
-            if humanoid and rootPart and humanoid.Health <= 0 then
-                local dist = (rootPart.Position - myPos).Magnitude
+            local hum = player.Character:FindFirstChild("Humanoid")
+            local root = player.Character:FindFirstChild("HumanoidRootPart")
+            if hum and root and hum.Health <= 0 then
+                local dist = (root.Position - myPos).Magnitude
                 if dist < nearestDist and dist <= 250 then
-                    nearest = targetChar
+                    nearest = player.Character
                     nearestDist = dist
                 end
             end
@@ -43,6 +43,7 @@ local function FindDownedPlayer()
     return nearest
 end
 
+-- ====== TELEPORT ======
 local function TeleportToTarget(targetChar)
     if not targetChar or not RootPart then
         Notify("❌ Lỗi", "Không tìm thấy mục tiêu!", 2)
@@ -54,8 +55,7 @@ local function TeleportToTarget(targetChar)
         return false
     end
     local targetPos = targetRoot.Position + Vector3.new(0, 1, 3)
-    local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
-    local tween = TweenService:Create(RootPart, tweenInfo, {Position = targetPos})
+    local tween = TweenService:Create(RootPart, TweenInfo.new(0.1, Enum.EasingStyle.Linear), {Position = targetPos})
     tween:Play()
     tween.Completed:Wait()
     return true
@@ -90,90 +90,105 @@ local function TeleportToPlayer(player)
         Notify("❌ Lỗi", "Người chơi không hợp lệ!", 2)
         return
     end
-    local targetChar = player.Character
-    local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+    local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
     if not targetRoot then
         Notify("❌ Lỗi", "Không tìm thấy RootPart!", 2)
         return
     end
     local targetPos = targetRoot.Position + Vector3.new(0, 1, 3)
-    local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
-    local tween = TweenService:Create(RootPart, tweenInfo, {Position = targetPos})
+    local tween = TweenService:Create(RootPart, TweenInfo.new(0.1, Enum.EasingStyle.Linear), {Position = targetPos})
     tween:Play()
     tween.Completed:Wait()
     Notify("✅ Đã teleport", "đến " .. player.Name, 2)
 end
 
--- ====== CLICK TELEPORT (CÓ RESET VẬT LÝ) ======
+-- ====== PHỤC HỒI COLLISION AN TOÀN (tránh bị bắn ra khỏi tường) ======
+local function SafeRestoreCollision()
+    -- Dời lên 1 stud trước để thoát khỏi tường nếu đang bị overlap
+    if RootPart then
+        RootPart.CFrame = RootPart.CFrame + Vector3.new(0, 1, 0)
+        RootPart.Velocity = Vector3.new(0, 0, 0)
+        RootPart.RotVelocity = Vector3.new(0, 0, 0)
+    end
+    -- Đợi 2 frame để engine cập nhật vị trí, rồi mới bật lại collision
+    task.wait()
+    task.wait()
+    if Character then
+        for _, part in ipairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+    if Humanoid then
+        Humanoid.Sit = false
+        Humanoid.PlatformStand = false
+    end
+end
+
+-- ====== CLICK TELEPORT (NOCLIP) ======
 local function ToggleClickTeleport()
     isClickTeleport = not isClickTeleport
-    
+
     if isClickTeleport then
-        Notify("🎯 CLICK TELEPORT", "ĐÃ BẬT! Click chuột để teleport", 3)
         noclipEnabled = true
+        if RootPart then
+            RootPart.Velocity = Vector3.new(0, 0, 0)
+        end
+        Notify("🎯 CLICK TELEPORT", "ĐÃ BẬT! Click chuột để teleport", 3)
+    else
+        noclipEnabled = false
+        Notify("❌ CLICK TELEPORT", "ĐÃ TẮT", 2)
+        -- Phục hồi collision nhẹ nhàng, tránh bị bắn ra ngoài
+        task.spawn(SafeRestoreCollision)
+    end
+end
+
+-- ====== XỬ LÝ NOCLIP MỖI FRAME ======
+RunService.Heartbeat:Connect(function()
+    if noclipEnabled and Character then
         for _, part in ipairs(Character:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.CanCollide = false
             end
         end
-        if RootPart then
-            RootPart.Velocity = Vector3.new(0, 0, 0)
-        end
-    else
-        Notify("❌ CLICK TELEPORT", "ĐÃ TẮT", 2)
-        noclipEnabled = false
-        for _, part in ipairs(Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = true
-            end
-        end
-        if RootPart then
-            RootPart.Velocity = Vector3.new(0, 0, 0)
-            RootPart.RotVelocity = Vector3.new(0, 0, 0)
-        end
-        if Humanoid then
-            Humanoid.Sit = false
-            Humanoid.PlatformStand = false
-        end
-    end
-end
-
--- ====== TỰ ĐỘNG TẮT NOCLIP KHI BỊ GỤC (SỬA LỖI VĂNG) ======
-Humanoid.HealthChanged:Connect(function()
-    if Humanoid.Health <= 0 then
-        if isClickTeleport then
-            isClickTeleport = false
-            noclipEnabled = false
-            Notify("🔄", "Đã tự tắt Click Teleport khi bị gục!", 2)
-        end
-        
-        if RootPart then
-            RootPart.Velocity = Vector3.new(0, 0, 0)
-            RootPart.RotVelocity = Vector3.new(0, 0, 0)
-        end
-        
-        for _, part in ipairs(Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = true
-            end
-        end
-        
-        if Humanoid then
-            Humanoid.Sit = false
-            Humanoid.PlatformStand = false
-        end
     end
 end)
 
--- ====== ESP ======
+-- ====== GẮN HEALTHCHANGED — tái kết nối sau respawn ======
+local healthConn = nil
+local function ConnectHealthChanged()
+    if healthConn then
+        healthConn:Disconnect()
+        healthConn = nil
+    end
+    healthConn = Humanoid.HealthChanged:Connect(function()
+        if Humanoid.Health <= 0 then
+            if isClickTeleport or noclipEnabled then
+                isClickTeleport = false
+                noclipEnabled = false
+                Notify("🔄", "Đã tự tắt Click Teleport khi bị gục!", 2)
+            end
+            -- Reset vật lý ngay khi gục để không bị văng
+            if RootPart then
+                RootPart.Velocity = Vector3.new(0, 0, 0)
+                RootPart.RotVelocity = Vector3.new(0, 0, 0)
+            end
+            -- Phục hồi collision an toàn
+            task.spawn(SafeRestoreCollision)
+        end
+    end)
+end
+ConnectHealthChanged()
+
+-- ====== ESP (cập nhật mỗi 0.5 giây, không rebuild mỗi frame) ======
 local function UpdateESP()
     for _, obj in ipairs(espObjects) do
         pcall(function() obj:Destroy() end)
     end
     espObjects = {}
 
-    if not espEnabled then return end
-    if not RootPart then return end
+    if not espEnabled or not RootPart then return end
 
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LP and player.Character then
@@ -183,10 +198,9 @@ local function UpdateESP()
             if not root or not humanoid then continue end
 
             local dist = (root.Position - RootPart.Position).Magnitude
-            local color = Color3.fromRGB(50, 255, 50)
-            if humanoid.Health <= 0 then
-                color = Color3.fromRGB(255, 50, 50)
-            end
+            local color = humanoid.Health > 0
+                and Color3.fromRGB(50, 255, 50)
+                or  Color3.fromRGB(255, 50, 50)
 
             local scale = 1 + (dist / 100)
             local box = Instance.new("BoxHandleAdornment")
@@ -225,7 +239,17 @@ local function UpdateESP()
     end
 end
 
--- ====== GUI BẢNG CHỌN ======
+-- Loop riêng cho ESP — không dùng Heartbeat để tránh lag
+task.spawn(function()
+    while true do
+        if espEnabled then
+            UpdateESP()
+        end
+        task.wait(0.5)
+    end
+end)
+
+-- ====== GUI BẢNG CHỌN PLAYER ======
 local function CreatePlayerListGUI()
     pcall(function()
         local VirtualUser = game:GetService("VirtualUser")
@@ -281,11 +305,6 @@ local function CreatePlayerListGUI()
     local corner2 = Instance.new("UICorner")
     corner2.Parent = closeBtn
 
-    closeBtn.MouseButton1Click:Connect(function()
-        screenGui:Destroy()
-        guiOpened = false
-    end)
-
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Parent = frame
     scrollFrame.Size = UDim2.new(1, 0, 1, -40)
@@ -304,7 +323,6 @@ local function CreatePlayerListGUI()
         for _, child in ipairs(scrollFrame:GetChildren()) do
             if child:IsA("TextButton") then child:Destroy() end
         end
-
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= LP then
                 local btn = Instance.new("TextButton")
@@ -361,7 +379,6 @@ local function CreatePlayerListGUI()
                 btn.MouseLeave:Connect(function()
                     btn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
                 end)
-
                 btn.MouseButton1Click:Connect(function()
                     screenGui:Destroy()
                     guiOpened = false
@@ -372,8 +389,25 @@ local function CreatePlayerListGUI()
     end
 
     UpdatePlayerList()
-    Players.PlayerAdded:Connect(UpdatePlayerList)
-    Players.PlayerRemoving:Connect(UpdatePlayerList)
+
+    -- Lưu connection để disconnect khi GUI đóng, tránh leak
+    local connAdded    = Players.PlayerAdded:Connect(UpdatePlayerList)
+    local connRemoving = Players.PlayerRemoving:Connect(UpdatePlayerList)
+
+    closeBtn.MouseButton1Click:Connect(function()
+        connAdded:Disconnect()
+        connRemoving:Disconnect()
+        screenGui:Destroy()
+        guiOpened = false
+    end)
+
+    -- Tự dọn connection nếu GUI bị destroy theo cách khác
+    screenGui.AncestryChanged:Connect(function()
+        if not screenGui.Parent then
+            pcall(function() connAdded:Disconnect() end)
+            pcall(function() connRemoving:Disconnect() end)
+        end
+    end)
 
     guiOpened = true
     return screenGui
@@ -389,21 +423,7 @@ local function ToggleGUI()
     end
 end
 
--- ====== CHỐNG ĐẨY KHI XOAY CAMERA ======
-RunService.Heartbeat:Connect(function()
-    if not isClickTeleport then
-        for _, part in ipairs(Character:GetDescendants()) do
-            if part:IsA("BasePart") and part.CanCollide == false then
-                part.CanCollide = true
-            end
-        end
-        if RootPart and RootPart.Velocity.Magnitude > 50 then
-            RootPart.Velocity = Vector3.new(0, 0, 0)
-            RootPart.RotVelocity = Vector3.new(0, 0, 0)
-        end
-    end
-end)
-
+-- ====== INPUT ======
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.V then TeleportAndRevive() end
@@ -411,53 +431,45 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.X then ToggleGUI() end
 end)
 
+-- ====== CLICK TELEPORT (chuột trái) ======
 Mouse.Button1Down:Connect(function()
-    if not isClickTeleport then return end
-    if not RootPart then return end
+    if not isClickTeleport or not RootPart then return end
     local targetPos = Mouse.Hit.Position
-    if targetPos then
-        local distance = (targetPos - RootPart.Position).Magnitude
-        if distance > 500 then
-            Notify("⚠️ Quá xa", "Khoảng cách: " .. math.floor(distance), 1.5)
-            return
-        end
-        Notify("🎯 Teleport!", "Đã dịch chuyển đến vị trí chuột", 1.5)
-        RootPart.CFrame = CFrame.new(targetPos + Vector3.new(0, 2, 0))
-        RootPart.Velocity = Vector3.new(0, 0, 0)
+    if not targetPos then return end
+    local distance = (targetPos - RootPart.Position).Magnitude
+    if distance > 500 then
+        Notify("⚠️ Quá xa", "Khoảng cách: " .. math.floor(distance), 1.5)
+        return
     end
+    Notify("🎯 Teleport!", "Đã dịch chuyển đến vị trí chuột", 1.5)
+    RootPart.CFrame = CFrame.new(targetPos + Vector3.new(0, 2, 0))
+    RootPart.Velocity = Vector3.new(0, 0, 0)
 end)
 
-RunService.Heartbeat:Connect(function()
-    if noclipEnabled and Character then
-        for _, part in ipairs(Character:GetDescendants()) do
-            if part:IsA("BasePart") then part.CanCollide = false end
-        end
-    end
-end)
-
-RunService.Heartbeat:Connect(function()
-    if espEnabled then UpdateESP() end
-end)
-
+-- ====== RESPAWN — tái kết nối mọi thứ ======
 LP.CharacterAdded:Connect(function(newChar)
     Character = newChar
-    Humanoid = Character:WaitForChild("Humanoid")
-    RootPart = Character:WaitForChild("HumanoidRootPart")
+    Humanoid = newChar:WaitForChild("Humanoid")
+    RootPart = newChar:WaitForChild("HumanoidRootPart")
     isRunning = false
-    if isClickTeleport then
+    -- Tắt noclip nếu đang bật khi respawn
+    if isClickTeleport or noclipEnabled then
         isClickTeleport = false
         noclipEnabled = false
     end
+    -- Tái kết nối HealthChanged với Humanoid mới
+    ConnectHealthChanged()
     Notify("🔄 Respawn", "Nhân vật mới đã xuất hiện!", 2)
 end)
 
+-- ====== KHỞI ĐỘNG ======
 Notify("🚀 SCRIPT ĐÃ CHẠY!", "[V] Teleport gục | [Z] Click TP | [X] Bảng chọn TP", 4)
 print("✅ Script đã chạy!")
 print("📌 [V] Teleport đến người gục")
-print("📌 [Z] Bật/Tắt Click Teleport")
+print("📌 [Z] Bật/Tắt Click Teleport (Noclip)")
 print("📌 [X] Mở bảng chọn người chơi để teleport")
 print("👁️ ESP: Box xuyên tường + tên — Xanh lá = sống, Đỏ = gục")
-print("🛡️ Tự động tắt Noclip khi bị gục để tránh văng")
+print("🛡️ Tự động tắt Noclip khi bị gục + phục hồi collision an toàn")
 
-wait(0.5)
+task.wait(0.5)
 UpdateESP()
